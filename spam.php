@@ -1,14 +1,14 @@
 <?php
 
 $messages = [["Sale today!", "2837273"],
-            ["Unique offer!", "3873827"],
-            ["Only today and only for you!", "2837273"],
-            ["Sale today!", "2837273"],
-            ["Unique offer!", "3873827"]];
+["Unique offer!", "3873827"],
+["Only today and only for you!", "2837273"],
+["Sale today!", "2837273"],
+["Unique offer!", "3873827"]];
 $messages2 = [["Check CodeClass out", "7284736"],
-            ["Check CodeClass out", "7462832"],
-            ["Check CodeClass out", "3625374"],
-            ["Check CodeClass out", "7264762"]];
+["Check CodeClass out", "7462832"],
+["Check CodeClass out", "3625374"],
+["Check CodeClass out", "7264762"]];
 $spamSignals = ["sale", "discount", "offer"];
 
 print_r(spamDetection($messages, $spamSignals));
@@ -17,50 +17,124 @@ print_r(spamDetection($messages2, $spamSignals));
 
 function spamDetection(array $messages, array $spamSignals)
 {
-
-return array(
-	checkLessThanFiveWords($messages),
-    checkSameUserSameContent($messages),
-    checkSameContent($messages),
-    checkWordsInSpamSignals($messages, $spamSignals)
-	);
+	return array(
+		checkCriterionLessThanFiveWords($messages),
+		checkCriterionSameUserSameContent($messages),
+		checkCriterionSameContent($messages),
+		checkCriterionWordsInSpamSignals($messages, $spamSignals)
+		);
 }
 
-function checkSameUserSameContent(array $messages)
+/**
+ * Checks for the first criterion: do > 90% of messages have less than five words?
+**/
+function checkCriterionLessThanFiveWords(array $messages)
 {
-    $usersMessages=groupMessagesByUser($messages);
-    $recipients=[];
+	if (count($messages)===0)  {
+		//impossible to check criterion
+		return "passed";
+	} 
 
-    foreach ($usersMessages as $userId => $usersMessage) {
-    	if (checkSame($usersMessage, true)==="failed") {
-    		$recipients[]=$userId;
-    	}
-    }
-    if (count($recipients)==0) {
-    	return "passed";
-    } else {
-    	$result=implode(" ", $recipients);	
-    	return "failed: $result";
-    }
-	
+	$lessThanFive=0; //number of messages with <5 words
+	foreach ($messages as $message) {
+		if (str_word_count($message[0])<5) {
+			$lessThanFive++;
+		}
+	}
+
+	$percentage=$lessThanFive/count($messages);
+	if($percentage<0.9) {
+		return "passed";
+	} else {
+		$result=reducedFraction($lessThanFive, count($messages));
+		return "failed: $result";
+	}
 }
 
+/**
+ * Reduces a fraction to lowest terms using the hcf of numerator and denominator
+**/
+function reducedFraction($numerator, $denominator)
+{
+	$hcf = hcf($numerator,$denominator);
+	$numerator=$numerator/$hcf;
+	$denominator=$denominator/$hcf;
+	return "$numerator/$denominator";
+}
+
+/**
+ * Obtains the highest common factor using Euclid's algorithm
+**/
+function hcf($a, $b)
+{
+	if( $a < $b)
+		list($b,$a) = array($a,$b);
+	if( $b == 0) 
+		return $a;
+	$r = $a % $b;
+	while($r > 0) {
+		$a = $b;
+		$b = $r;
+		$r = $a % $b;
+	}
+	return $b;
+}
+
+/**
+ * Checks for the first criterion: do > 50% of messages to any single user have the same content?
+**/
+function checkCriterionSameUserSameContent(array $messages)
+{
+	if (count($messages)===0)  {
+		//impossible to check criterion
+		return "passed";
+	} 
+
+	$usersMessages=groupMessagesByUser($messages);
+	$recipients=[];
+
+	foreach ($usersMessages as $userId => $usersMessage) {
+		if (checkSame($usersMessage, true)==="failed") {
+			$recipients[]=$userId;
+		}
+	}
+	if (count($recipients)==0) {
+		return "passed";
+	} else {
+		$result=implode(" ", $recipients);	
+		return "failed: $result";
+	}
+}
+
+/**
+ * Groups messages by user id, sorted in numeric order
+**/
 function groupMessagesByUser(array $messages) 
 {
-    $sorted=[];
-    foreach ($messages as $key => $message) {
-    	$sorted[$message[1]][]=$message[0];
-    }
-    ksort($sorted, SORT_NUMERIC);
-    return $sorted;
+	$sorted=[];
+	foreach ($messages as $key => $message) {
+		$sorted[$message[1]][]=$message[0];
+	}
+	ksort($sorted, SORT_NUMERIC);
+	return $sorted;
 }
 
-function checkSameContent(array $messages)
+/**
+ * Checks for the third criterion: do > 50% of all messages have the same content?
+**/
+function checkCriterionSameContent(array $messages)
 {
+	if (count($messages)===0)  {
+		//impossible to check criterion
+		return "passed";
+	} 
 	$messages=array_column($messages, 0);
 	return checkSame($messages);
 }
 
+/**
+ * Checks for the for messages that have the same content
+**/
 function checkSame(array $messages, $perUser=false)
 {
 	$repeated=0;
@@ -90,8 +164,16 @@ function checkSame(array $messages, $perUser=false)
 	}
 }
 
-function checkWordsInSpamSignals(array $messages, array $spamSignals)
+/**
+ * Checks for the fourth criterion: do > 50% of messages contain at least one of the spam signals?
+**/
+function checkCriterionWordsInSpamSignals(array $messages, array $spamSignals)
 {
+	if (count($messages)===0)  {
+		//impossible to check criterion
+		return "passed";
+	} 
+
 	//tracks which messages have the signals
 	$present= array_fill(0, count($messages), false);
 
@@ -110,10 +192,10 @@ function checkWordsInSpamSignals(array $messages, array $spamSignals)
 	}
 
 	$present=array_filter($present, function($item) {
-    	return $item===true;
-    });
+		return $item===true;
+	});
 
-    $percentage=(count($present)/count($messages));
+	$percentage=(count($present)/count($messages));
 	if($percentage<0.5) {
 		return "passed";
 	}
@@ -128,43 +210,4 @@ function checkWordsInSpamSignals(array $messages, array $spamSignals)
 		$words=implode(" ", $words);
 		return "failed: $words";
 	}
-}
-
-function checkLessThanFiveWords(array $messages)
-{
-	$lessThanFive=0;
-	foreach ($messages as $message) {
-		if (str_word_count($message[0])<5) {
-			$lessThanFive++;
-		}
-	}
-
-	$percentage=$lessThanFive/count($messages);
-	if($percentage<0.9) {
-		return "passed";
-	} else {
-		$result=reducedFrac($lessThanFive, count($messages));
-		return "failed: $result";
-	}
-}
-
-function reducedFrac($numerator, $denominator)
-{
-    $hcf = hcf($numerator,$denominator);
-    $numerator=$numerator/$hcf;
-    $denominator=$denominator/$hcf;
-	return "$numerator/$denominator";
-}
-
-function hcf($a, $b)
-{
-	if( $a < $b) list($b,$a) = Array($a,$b);
-    if( $b == 0) return $a;
-    $r = $a % $b;
-    while($r > 0) {
-        $a = $b;
-        $b = $r;
-        $r = $a % $b;
-    }
-    return $b;
 }
