@@ -1,20 +1,5 @@
 <?php
 
-$messages = [["Sale today!", "2837273"],
-["Unique offer!", "3873827"],
-["Only today and only for you!", "2837273"],
-["Sale today!", "2837273"],
-["Unique offer!", "3873827"]];
-$messages2 = [["Check CodeClass out", "7284736"],
-["Check CodeClass out", "7462832"],
-["Check CodeClass out", "3625374"],
-["Check CodeClass out", "7264762"]];
-$spamSignals = ["sale", "discount", "offer"];
-
-print_r(spamDetection($messages, $spamSignals));
-echo "<br>";
-print_r(spamDetection($messages2, $spamSignals));
-
 function spamDetection(array $messages, array $spamSignals)
 {
 	return array(
